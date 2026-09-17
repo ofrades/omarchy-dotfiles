@@ -4,7 +4,7 @@ Track dotfiles with [mise](https://mise.jdx.dev/dotfiles.html) and share
 them between your machines over [Tailscale](https://tailscale.com) — no
 GitHub account required.
 
-The panel has four tabs:
+The panel has four sections:
 
 - **Setup** — mise / watcher / origin / Tailscale status, enable the
   auto-save watcher, connect a Tailscale git origin.

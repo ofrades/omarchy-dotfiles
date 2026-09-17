@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "id": "io.github.ofrades.dotfiles",
   "name": "Dotfiles",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "author": "ofrades",
   "license": "MIT",
   "description": "Track dotfiles with mise and share them between machines over Tailscale.",
@@ -24,6 +24,10 @@
     "displayName": "Dotfiles",
     "description": "Track dotfiles with mise, browse history, and share over Tailscale.",
     "category": "Files",
+    "aliases": [
+      "dotfiles",
+      "mise-dotfiles"
+    ],
     "allowMultiple": false,
     "defaultSection": "right",
     "defaults": {
