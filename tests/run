@@ -1,0 +1,71 @@
+#!/usr/bin/env bash
+# Smoke tests for the omarchy-dotfiles plugin. No shell state is changed:
+# the helper only reads, and the Model.js tests run in node.
+set -euo pipefail
+
+cd "$(dirname "$0")/.."
+
+echo "== python syntax =="
+python3 -m py_compile dotfiles_status.py
+echo OK
+
+echo "== helper output =="
+python3 dotfiles_status.py | python3 -c "
+import json, sys
+d = json.load(sys.stdin)
+assert d.get('ok') is True, 'ok flag missing'
+assert isinstance(d.get('files'), list), 'files missing'
+assert isinstance(d.get('activity'), list), 'activity missing'
+assert 'tailscale' in d and 'sync' in d and 'history' in d
+print('files:', len(d['files']), '| checkpoints:', d['history'].get('checkpoints'), '| tailscale running:', d['tailscale'].get('running'))
+"
+
+if command -v node >/dev/null 2>&1; then
+  echo "== Model.js =="
+  node -e "
+const M = require('./Model.js');
+const empty = M.parseStatus('');
+console.assert(Array.isArray(empty.files) && empty.files.length === 0, 'empty parse');
+const sample = JSON.stringify({ files: [{ target: '~/.zshrc', mode: 'track', state: 'tracked' }], edits: [], history: { enabled: true, trackedEntries: 1, trackedFiles: 1, checkpoints: 2, latest: { id: 2, createdAt: new Date().toISOString(), trigger: 'save', description: 'manual save' }, watcher: 'running', pendingOperations: 0 }, sync: { origin: 'ssh://u@100.1.1.1/~/setup.git', branch: 'main', mode: 'sync', pendingApplications: [], conflicts: [], lastError: '', lastPublish: '', lastFetch: '' }, activity: [{ id: 2, createdAt: new Date().toISOString(), trigger: 'save', description: 'manual save' }], tailscale: { installed: true, running: true, selfName: 'laptop', selfIps: ['100.1.1.2'], peers: [{ hostName: 'desktop', dnsName: '', os: 'linux', online: false, ips: ['100.1.1.3'] }] }, mise: { installed: true, version: '2026.9.5' }, lastError: '' });
+const p = M.parseStatus(sample);
+console.assert(p.files.length === 1 && p.files[0].target === '~/.zshrc', 'files parse');
+console.assert(M.isConfigured(p) === true, 'configured');
+console.assert(M.fileGlyph('a.lua') === '󰈙', 'glyph');
+console.assert(M.peerTarget(p.tailscale.peers[0]) === 'desktop:', 'peer target');
+console.assert(M.relativeTime(new Date().toISOString()) === 'Just now', 'relative time');
+const bad = M.parseStatus('{nope');
+console.assert(bad.ok === false, 'bad json');
+console.log('Model.js OK');
+"
+else
+  echo "(node missing, skipping Model.js tests)"
+fi
+
+if command -v omarchy >/dev/null 2>&1; then
+  echo "== omarchy plugin validate =="
+  omarchy plugin validate .
+  echo OK
+else
+  echo "(omarchy missing, skipping validate)"
+fi
+
+echo "== QML guards =="
+# The Qt toolchain on some machines predates the typed-JS syntax stock
+# Omarchy plugins use, so qmllint/qmlformat can fail even on first-party
+# files. Only run them when they pass on a stock plugin (canary).
+if command -v qmllint >/dev/null 2>&1 && [ -n "${OMARCHY_PATH:-}" ] \
+  && qmllint -I "$OMARCHY_PATH/shell" "$OMARCHY_PATH/shell/plugins/panels/clock/BarWidget.qml" >/dev/null 2>&1; then
+  echo "== qmllint =="
+  qmllint -I "$OMARCHY_PATH/shell" BarWidget.qml Panel.qml Service.qml
+  echo OK
+else
+  echo "(qmllint too old for stock plugins here, skipping)"
+fi
+# No optional-chaining / nullish-coalescing: not guaranteed in the QML engine.
+if grep -n "?\.\|??" BarWidget.qml Panel.qml Service.qml Model.js; then
+  echo "FAIL: unsupported JS syntax found" >&2
+  exit 1
+fi
+echo OK
+
+echo "ALL GREEN"
