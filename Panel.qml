@@ -469,16 +469,15 @@ Panel {
 
             PanelSectionHeader { text: "ACTIVITY"; foreground: root.foreground; fontFamily: root.fontFamily }
 
-            // Publishing and fetching belong to the history watcher, so this
-            // tab reports where that automation stands and only offers the
-            // manual round when the automation is not covering it: watcher
-            // stopped, or the last sync failed.
+            // The watcher owns the automatic round. Keep the manual check
+            // visible as an explicit freshness control rather than making
+            // opening this otherwise read-only panel contact the network.
             Text {
               visible: dotfiles.origin !== "" && dotfiles.watcherRunning && dotfiles.syncError === ""
               width: parent.width
               textFormat: Text.PlainText
               text: {
-                var parts = ["Syncing automatically"]
+                var parts = ["Automatic two-way sync"]
                 var published = Model.relativeTime(dotfiles.lastPublish)
                 var fetched = Model.relativeTime(dotfiles.lastFetch)
                 if (published !== "") parts.push("published " + published)
@@ -492,17 +491,76 @@ Panel {
             }
 
             ActionRow {
-              visible: dotfiles.origin !== "" && (!dotfiles.watcherRunning || dotfiles.syncError !== "")
-              title: "Sync now"
-              subtitle: dotfiles.syncError !== "" ? dotfiles.syncError : "Watcher stopped — publish + fetch by hand"
+              visible: dotfiles.origin !== ""
+              title: "Check remote now"
+              subtitle: dotfiles.syncError !== "" ? "Last check failed — details above" : "Publish local checkpoints and fetch remote changes"
               onClicked: dotfiles.syncNow()
             }
 
             ActionRow {
-              visible: dotfiles.pendingApplications.length > 0 || dotfiles.conflicts.length > 0
+              visible: dotfiles.pendingApplications.length > 0 && dotfiles.conflicts.length === 0
               title: "Pull shared changes"
-              subtitle: dotfiles.conflicts.length > 0 ? (dotfiles.conflicts.length + " conflicts need a decision") : (dotfiles.pendingApplications.length + " pending")
+              subtitle: dotfiles.pendingApplications.length + " pending · normally applied automatically in sync mode"
               onClicked: dotfiles.pullNow()
+            }
+
+            Text {
+              visible: dotfiles.conflicts.length > 0
+              width: parent.width
+              textFormat: Text.PlainText
+              text: dotfiles.conflicts.length + (dotfiles.conflicts.length === 1 ? " conflict needs" : " conflicts need") + " a decision"
+              color: root.urgent
+              font.family: root.fontFamily
+              font.pixelSize: Style.font.bodySmall
+              wrapMode: Text.WordWrap
+            }
+
+            Column {
+              visible: dotfiles.conflicts.length > 0
+              width: parent.width
+              spacing: Style.space(6)
+
+              Repeater {
+                model: dotfiles.conflicts
+                Column {
+                  required property var modelData
+                  width: parent.width
+                  spacing: Style.space(4)
+
+                  Text {
+                    width: parent.width
+                    textFormat: Text.PlainText
+                    text: String(parent.modelData.path || "")
+                    color: root.dim
+                    font.family: root.fontFamily
+                    font.pixelSize: Style.font.caption
+                    elide: Text.ElideMiddle
+                  }
+
+                  Text {
+                    visible: String(parent.modelData.reason || "") !== ""
+                    width: parent.width
+                    textFormat: Text.PlainText
+                    text: String(parent.modelData.reason || "")
+                    color: root.dim
+                    font.family: root.fontFamily
+                    font.pixelSize: Style.font.caption
+                    wrapMode: Text.WordWrap
+                  }
+
+                  ActionRow {
+                    title: "Take remote version"
+                    subtitle: "Replace this machine's version"
+                    onClicked: dotfiles.takeRemote(String(parent.modelData.path || ""))
+                  }
+
+                  ActionRow {
+                    title: "Keep local version"
+                    subtitle: "Publish this machine's version next"
+                    onClicked: dotfiles.keepLocal(String(parent.modelData.path || ""))
+                  }
+                }
+              }
             }
 
             ActionRow {

@@ -114,7 +114,25 @@ def payload():
                 pending = sync.get("pending_applications", []) or []
                 data["sync"]["pendingApplications"] = [str(item) for item in pending]
                 conflicts = sync.get("conflicts", []) or []
-                data["sync"]["conflicts"] = [str(item) for item in conflicts]
+                for item in conflicts:
+                    if isinstance(item, (list, tuple)) and item:
+                        data["sync"]["conflicts"].append(
+                            {
+                                "path": str(item[0]),
+                                "reason": str(item[1]) if len(item) > 1 else "",
+                            }
+                        )
+                    elif isinstance(item, dict):
+                        data["sync"]["conflicts"].append(
+                            {
+                                "path": str(item.get("path", "")),
+                                "reason": str(item.get("reason", "")),
+                            }
+                        )
+                    else:
+                        data["sync"]["conflicts"].append(
+                            {"path": str(item), "reason": ""}
+                        )
                 data["sync"]["lastError"] = str(sync.get("last_error", "") or "")
                 data["sync"]["lastPublish"] = str(sync.get("last_publish", "") or "")
                 data["sync"]["lastFetch"] = str(sync.get("last_fetch", "") or "")

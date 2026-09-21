@@ -13,10 +13,10 @@ The panel has four sections:
   — open in the default editor, share via Taildrop, and remove from
   tracking (hover for tooltips) — plus *Share all files* for the whole
   list. *Save all* only appears when auto-save is behind.
-- **Activity** — recent checkpoints, pull, undo, and where auto-sync
-  stands. `Sync now` only appears when the watcher is stopped or the last
-  sync failed; with the watcher running, publishing and fetching happen
-  on their own (see below).
+- **Activity** — recent checkpoints, sync health, an explicit *Check remote
+  now* action, pull, undo, and per-file conflict decisions. With the watcher
+  running in `sync` mode, publishing, fetching, and applying conflict-free
+  changes happen on their own (see below).
 - **Share** — pick a tailnet peer and push one file with Taildrop
   (`tailscale file cp`), or send every tracked file at once. Receiving is
   not in the panel: Omarchy's `omarchy-tailscale-receive.service` already
@@ -34,10 +34,12 @@ Two transports, both staying inside your tailnet:
    ssh://user@100.x.y.z/~/setup.git
    ```
    From then on the history watcher publishes your checkpoints and
-   fetches everyone else's by itself (`mise bootstrap dotfiles sync`
-   with mode `sync`) — no button needed. `Activity → Pull` applies
-   fetched changes to your live files, and `Sync now` forces a round
-   immediately if you do not want to wait for the watcher.
+   fetches everyone else's changes and applies conflict-free updates by
+   itself (`mise bootstrap dotfiles sync` with mode `sync`) — no button
+   needed. *Check remote now* forces a publish + fetch round without making
+   merely opening the panel contact the network. *Pull shared changes* is
+   available when fetched work is still pending, while conflicts offer
+   explicit *Take remote* and *Keep local* decisions.
    Requires `sshd` running on the host machine.
 
 2. **Quick file push.** Share tab → pick an online peer, then hit the

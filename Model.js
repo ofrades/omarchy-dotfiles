@@ -83,7 +83,12 @@ function parseStatus(raw) {
         base.sync.pendingApplications = sync.pendingApplications.map(String)
       }
       if (Array.isArray(sync.conflicts)) {
-        base.sync.conflicts = sync.conflicts.map(String)
+        base.sync.conflicts = sync.conflicts.map(function(item) {
+          if (item && typeof item === "object") {
+            return { path: String(item.path || ""), reason: String(item.reason || "") }
+          }
+          return { path: String(item || ""), reason: "" }
+        })
       }
       base.sync.lastError = String(sync.lastError || "")
       base.sync.lastPublish = String(sync.lastPublish || "")

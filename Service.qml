@@ -174,11 +174,23 @@ Item {
   }
 
   function syncNow() {
-    runAction("Syncing with origin", ["mise", "-y", "bootstrap", "dotfiles", "sync"])
+    runAction("Checking remote", ["mise", "-y", "bootstrap", "dotfiles", "sync", "--best-effort"])
   }
 
   function pullNow() {
     runAction("Pulling shared changes", ["mise", "-y", "bootstrap", "dotfiles", "pull"])
+  }
+
+  function takeRemote(path) {
+    var expanded = expandPath(path)
+    if (expanded === "") return
+    runAction("Taking remote version of " + String(path), ["mise", "-y", "bootstrap", "dotfiles", "pull", "--take-remote", expanded])
+  }
+
+  function keepLocal(path) {
+    var expanded = expandPath(path)
+    if (expanded === "") return
+    runAction("Keeping local version of " + String(path), ["mise", "-y", "bootstrap", "dotfiles", "pull", "--keep-local", expanded])
   }
 
   function enableWatcher() {
@@ -299,8 +311,10 @@ Item {
       var stderr = String(actionStderr.text || root._actionError || "")
       if (exitCode !== 0) {
         root.lastError = Model.elideStatus(stderr || stdout || (root._actionLabel + " failed"))
-        root.actionStatus = root.lastError
-        actionStatusTimer.restart()
+        // Keep command stderr in the error channel only. Mirroring it into
+        // actionStatus makes the panel render the same failure twice until
+        // the delayed status refresh replaces it with mise's concise error.
+        root.actionStatus = ""
       } else {
         root.lastError = ""
         root.actionStatus = ""
